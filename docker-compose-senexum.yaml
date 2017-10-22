@@ -1,0 +1,380 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+version: '2'
+
+networks:
+  senexum:
+
+services:
+  zookeeper0:
+    extends:
+      file: base/dc-orderer-kafka-base.yaml
+      service: zookeeper
+    environment:
+      # ========================================================================
+      #     Reference: https://zookeeper.apache.org/doc/r3.4.9/zookeeperAdmin.html#sc_configuration
+      # ========================================================================
+      #
+      # myid
+      # The ID must be unique within the ensemble and should have a value
+      # between 1 and 255.
+      - ZOO_MY_ID=1
+      #
+      # server.x=[hostname]:nnnnn[:nnnnn]
+      # The list of servers that make up the ZK ensemble. The list that is used
+      # by the clients must match the list of ZooKeeper servers that each ZK
+      # server has. There are two port numbers `nnnnn`. The first is what
+      # followers use to connect to the leader, while the second is for leader
+      # election.
+      - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+    networks:
+      - senexum
+
+  zookeeper1:
+    extends:
+      file: base/dc-orderer-kafka-base.yaml
+      service: zookeeper
+    environment:
+      - ZOO_MY_ID=2
+      - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+    networks:
+      - senexum
+
+  zookeeper2:
+    extends:
+      file: base/dc-orderer-kafka-base.yaml
+      service: zookeeper
+    environment:
+      - ZOO_MY_ID=3
+      - ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888
+    networks:
+      - senexum
+
+  kafka0:
+    extends:
+      file: base/dc-orderer-kafka-base.yaml
+      service: kafka
+    environment:
+      # ========================================================================
+      #     Reference: https://kafka.apache.org/documentation/#configuration
+      # ========================================================================
+      #
+      # broker.id
+      - KAFKA_BROKER_ID=0
+      #
+      # min.insync.replicas
+      # Let the value of this setting be M. Data is considered committed when
+      # it is written to at least M replicas (which are then considered in-sync
+      # and belong to the in-sync replica set, or ISR). In any other case, the
+      # write operation returns an error. Then:
+      # 1. If up to M-N replicas -- out of the N (see default.replication.factor
+      # below) that the channel data is written to -- become unavailable,
+      # operations proceed normally.
+      # 2. If more replicas become unavailable, Kafka cannot maintain an ISR set
+      # of M, so it stops accepting writes. Reads work without issues. The
+      # channel becomes writeable again when M replicas get in-sync.
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      #
+      # default.replication.factor
+      # Let the value of this setting be N. A replication factor of N means that
+      # each channel will have its data replicated to N brokers. These are the
+      # candidates for the ISR set of a channel. As we noted in the
+      # min.insync.replicas section above, not all of these brokers have to be
+      # available all the time. In this sample configuration we choose a
+      # default.replication.factor of K-1 (where K is the total number of brokers in
+      # our Kafka cluster) so as to have the largest possible candidate set for
+      # a channel's ISR. We explicitly avoid setting N equal to K because
+      # channel creations cannot go forward if less than N brokers are up. If N
+      # were set equal to K, a single broker going down would mean that we would
+      # not be able to create new channels, i.e. the crash fault tolerance of
+      # the ordering service would be non-existent.
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      #
+      # zookeper.connect
+      # Point to the set of Zookeeper nodes comprising a ZK ensemble.
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+      #
+      # zookeeper.connection.timeout.ms
+      # The max time that the client waits to establish a connection to
+      # Zookeeper. If not set, the value in zookeeper.session.timeout.ms (below)
+      # is used.
+      #- KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS = 6000
+      #
+      # zookeeper.session.timeout.ms
+      #- KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS = 6000
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - senexum
+
+  kafka1:
+    extends:
+      file: base/dc-orderer-kafka-base.yaml
+      service: kafka
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - senexum
+
+  kafka2:
+    extends:
+      file: base/dc-orderer-kafka-base.yaml
+      service: kafka
+    environment:
+      - KAFKA_BROKER_ID=2
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - senexum
+
+  kafka3:
+    extends:
+      file: base/dc-orderer-kafka-base.yaml
+      service: kafka
+    environment:
+      - KAFKA_BROKER_ID=3
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_MIN_INSYNC_REPLICAS=2
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+    networks:
+      - senexum
+
+  ca0:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-cyberdyne
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.cyberdyne.senexum.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/87bff8d5a49ac4f49a99793f4980e212f46bc1a352bef645456bf74920e35f56_sk
+    ports:
+      - "7054:7054"
+    command: sh -c 'fabric-ca-server start --ca.certfile /etc/hyperledger/fabric-ca-server-config/ca.cyberdyne.senexum.com-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server-config/87bff8d5a49ac4f49a99793f4980e212f46bc1a352bef645456bf74920e35f56_sk -b admin:adminpw -d'
+    volumes:
+      - ./crypto-config/peerOrganizations/cyberdyne.senexum.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca_cyberdyne
+    networks:
+      - senexum
+
+  ca1:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-umbrella
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.umbrella.senexum.com-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/9750fd2a7c749bc48998ee0b192f4a2bf851bf9dd0118283c7a0122a4235c835_sk
+    ports:
+      - "8054:7054"
+    command: sh -c 'fabric-ca-server start --ca.certfile /etc/hyperledger/fabric-ca-server-config/ca.umbrella.senexum.com-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server-config/9750fd2a7c749bc48998ee0b192f4a2bf851bf9dd0118283c7a0122a4235c835_sk -b admin:adminpw -d'
+    volumes:
+      - ./crypto-config/peerOrganizations/umbrella.senexum.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca_umbrella
+    networks:
+      - senexum
+
+  cyberdyne.orderer.senexum.com:
+    container_name: cyberdyne.orderer.senexum.com
+    image: hyperledger/fabric-orderer
+    environment:
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=SenexumOrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      # enabled TLS
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+    - ./channel-artifacts/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+    - ./crypto-config/ordererOrganizations/orderer.senexum.com/orderers/cyberdyne.orderer.senexum.com/msp:/var/hyperledger/orderer/msp
+    - ./crypto-config/ordererOrganizations/orderer.senexum.com/orderers/cyberdyne.orderer.senexum.com/tls/:/var/hyperledger/orderer/tls
+    ports:
+      - 7050:7050
+    networks:
+      - senexum
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+      - kafka0
+      - kafka1
+      - kafka2
+      - kafka3
+  
+  umbrella.orderer.senexum.com:
+    container_name: umbrella.orderer.senexum.com
+    image: hyperledger/fabric-orderer
+    environment:
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=SenexumOrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      # enabled TLS
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+    - ./channel-artifacts/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+    - ./crypto-config/ordererOrganizations/orderer.senexum.com/orderers/umbrella.orderer.senexum.com/msp:/var/hyperledger/orderer/msp
+    - ./crypto-config/ordererOrganizations/orderer.senexum.com/orderers/umbrella.orderer.senexum.com/tls/:/var/hyperledger/orderer/tls
+    ports:
+      - 6050:7050
+    networks:
+      - senexum
+    depends_on:
+      - zookeeper0
+      - zookeeper1
+      - zookeeper2
+      - kafka0
+      - kafka1
+      - kafka2
+      - kafka3
+
+  peer0.cyberdyne.senexum.com:
+    container_name: peer0.cyberdyne.senexum.com
+    extends:
+      file: base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.cyberdyne.senexum.com
+      - CORE_PEER_ADDRESS=peer0.cyberdyne.senexum.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.cyberdyne.senexum.com:7051
+      - CORE_PEER_LOCALMSPID=CyberdyneMSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/cyberdyne.senexum.com/peers/peer0.cyberdyne.senexum.com/msp:/etc/hyperledger/fabric/msp
+        - ./crypto-config/peerOrganizations/cyberdyne.senexum.com/peers/peer0.cyberdyne.senexum.com/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 7051:7051
+      - 7053:7053
+    networks:
+      - senexum
+
+  peer1.cyberdyne.senexum.com:
+    container_name: peer1.cyberdyne.senexum.com
+    extends:
+      file: base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.cyberdyne.senexum.com
+      - CORE_PEER_ADDRESS=peer1.cyberdyne.senexum.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.cyberdyne.senexum.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.cyberdyne.senexum.com:7051
+      - CORE_PEER_LOCALMSPID=CyberdyneMSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/cyberdyne.senexum.com/peers/peer1.cyberdyne.senexum.com/msp:/etc/hyperledger/fabric/msp
+        - ./crypto-config/peerOrganizations/cyberdyne.senexum.com/peers/peer1.cyberdyne.senexum.com/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 8051:7051
+      - 8053:7053
+    networks:
+      - senexum
+
+  peer0.umbrella.senexum.com:
+    container_name: peer0.umbrella.senexum.com
+    extends:
+      file: base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.umbrella.senexum.com
+      - CORE_PEER_ADDRESS=peer0.umbrella.senexum.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.umbrella.senexum.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.umbrella.senexum.com:7051
+      - CORE_PEER_LOCALMSPID=UmbrellaMSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/umbrella.senexum.com/peers/peer0.umbrella.senexum.com/msp:/etc/hyperledger/fabric/msp
+        - ./crypto-config/peerOrganizations/umbrella.senexum.com/peers/peer0.umbrella.senexum.com/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 9051:7051
+      - 9053:7053
+    networks:
+      - senexum
+
+  peer1.umbrella.senexum.com:
+    container_name: peer1.umbrella.senexum.com
+    extends:
+      file: base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.umbrella.senexum.com
+      - CORE_PEER_ADDRESS=peer1.umbrella.senexum.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.umbrella.senexum.com:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.umbrella.senexum.com:7051
+      - CORE_PEER_LOCALMSPID=UmbrellaMSP
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/umbrella.senexum.com/peers/peer1.umbrella.senexum.com/msp:/etc/hyperledger/fabric/msp
+        - ./crypto-config/peerOrganizations/umbrella.senexum.com/peers/peer1.umbrella.senexum.com/tls:/etc/hyperledger/fabric/tls
+    ports:
+      - 10051:7051
+      - 10053:7053
+    networks:
+      - senexum
+  
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools
+    tty: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.cyberdyne.senexum.com:7051
+      - CORE_PEER_LOCALMSPID=CyberdyneMSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/cyberdyne.senexum.com/peers/peer0.cyberdyne.senexum.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/cyberdyne.senexum.com/peers/peer0.cyberdyne.senexum.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/cyberdyne.senexum.com/peers/peer0.cyberdyne.senexum.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/cyberdyne.senexum.com/users/Admin@cyberdyne.senexum.com/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    #command: /bin/bash -c './scripts/script.sh ${CHANNEL_NAME} ${DELAY}; sleep $TIMEOUT'
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./chaincode/:/opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go
+        - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+        - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
+        - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+    depends_on:
+      - cyberdyne.orderer.senexum.com
+      - umbrella.orderer.senexum.com
+      - peer0.cyberdyne.senexum.com
+      - peer1.cyberdyne.senexum.com
+      - peer0.umbrella.senexum.com
+      - peer1.umbrella.senexum.com
+    networks:
+      - senexum
