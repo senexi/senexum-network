@@ -101,7 +101,7 @@ Bring down the network using `docker-compose -f docker-compose-senexum.yaml down
 
 Use `docker rm $(docker ps -a -q)` to remove all containers including the ones running the chaincode.
 
-##Running the script
+## Running the script
 
 For testing purposes, the docker compose file also contains an addition container `cli` with includes several tools to interact with the network from the console.
 
@@ -113,7 +113,7 @@ Enter the CLI container uding `docker exec -it cli bash` and execute the end-2-e
 
 See the logs of the CLI container by using `docker logs -f cli`.
 
-###Manual execution
+### Manual execution
 
 **Invoke**
 `peer chaincode invoke -o cyberdyne.orderer.senexum.com:7050  --tls true --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/orderer.senexum.com/orderers/cyberdyne.orderer.senexum.com/msp/tlscacerts/tlsca.orderer.senexum.com-cert.pem -C world-domination-channel -n mycc -c '{"Args":["invoke","a","b","100"]}'`
