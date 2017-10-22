@@ -1,4 +1,4 @@
-#Hyperledger fabric example
+# Hyperledger fabric example
 
 First try out of a Hyperledger Fabric network based on the 'build your first network' tutorial. This sample includes the use of CAs, Apache Kafka / Zookeeper, and multiple orderer peers. 
 
